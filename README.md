@@ -26,3 +26,6 @@ extracted data, capturing:
 4. **Enable LLM Integration:** Provide a querying interface (e.g., vector search over 
 embeddings) to allow an LLM to access contextualized information from the knowledge 
 graph when answering user queries.
+
+## Acknowledgements
+Thank you to arXiv for use of its open access interoperability.
