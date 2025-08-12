@@ -1,0 +1,8 @@
+arxiv
+pdfplumber
+sentence-transformers
+numpy
+faiss-cpu
+networkx
+requests
+tqdm
