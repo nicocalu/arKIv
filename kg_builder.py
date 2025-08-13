@@ -14,26 +14,33 @@ GRAPH_OUTPUT_PATH = "knowledge_graph.gexf"
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # seconds
 
-def call_llm_api(abstract):
+def call_llm_api(abstract, existing_topics):
     """
     Calls the configured LLM API to extract entities from the abstract.
     Includes retry logic for handling transient API errors.
     """
-    if LLM_API_KEY == "YOUR_API_KEY_HERE" or LLM_API_ENDPOINT == "YOUR_API_ENDPOINT_HERE":
-        raise ValueError("Please update LLM_API_KEY and LLM_API_ENDPOINT in config.py")
+    if LLM_API_KEY == "" :
+        raise ValueError("Please update LLM_API_KEY in config.py")
 
     headers = {
         "Authorization": f"Bearer {LLM_API_KEY}",
         "Content-Type": "application/json"
     }
-    # This payload structure is common for OpenAI-compatible APIs.
-    # You may need to adjust it based on your specific provider.
+    
+    # Format the list of existing topics for the prompt
+    topics_str = ", ".join(existing_topics) if existing_topics else "None"
+    
+    prompt = EXTRACTION_PROMPT_TEMPLATE.format(
+        abstract=abstract,
+        existing_topics=topics_str
+    )
+
     payload = {
-        "model": "gpt-3.5-turbo", # Or any other model your provider supports
+        "model": "o3-mini", 
         "messages": [
-            {"role": "user", "content": EXTRACTION_PROMPT_TEMPLATE.format(abstract=abstract)}
+            {"role": "user", "content": prompt}
         ],
-        "temperature": 0.0, # We want deterministic output
+        "temperature": 0.0,
         "response_format": {"type": "json_object"}
     }
 
@@ -42,8 +49,6 @@ def call_llm_api(abstract):
             response = requests.post(LLM_API_ENDPOINT, headers=headers, json=payload, timeout=60)
             response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
             
-            # The actual content is usually in response.json()['choices'][0]['message']['content']
-            # We will try to parse it as JSON.
             content = response.json()['choices'][0]['message']['content']
             return json.loads(content)
 
@@ -72,6 +77,9 @@ def main():
 
     print(f"Found {len(metadata_files)} metadata files. Starting knowledge graph construction...")
 
+    # Set to keep track of topics already in the graph
+    existing_topics = set()
+
     for filename in tqdm(metadata_files, desc="Processing papers"):
         filepath = os.path.join(METADATA_DIR, filename)
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -92,7 +100,8 @@ def main():
 
         # Extract entities from abstract using LLM
         print(f"\nProcessing: {title}")
-        extracted_data = call_llm_api(abstract)
+        # Pass the current list of topics to the API call
+        extracted_data = call_llm_api(abstract, list(existing_topics))
 
         if extracted_data:
             # Add methodology nodes and connect them
@@ -102,8 +111,11 @@ def main():
 
             # Add topic nodes and connect them
             for topic in extracted_data.get('topics', []):
+                # Add to the graph
                 G.add_node(topic, label=topic, type='topic')
                 G.add_edge(paper_id, topic, label='has_topic')
+                # Add to our set of existing topics for the next API call
+                existing_topics.add(topic)
         else:
             print(f" - Skipping entity extraction for '{title}' due to API failure.")
 
