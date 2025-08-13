@@ -47,13 +47,27 @@ def call_llm_api(abstract, existing_topics):
     for attempt in range(MAX_RETRIES):
         try:
             response = requests.post(LLM_API_ENDPOINT, headers=headers, json=payload, timeout=60)
-            response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+
+            if response.status_code == 429:
+                print(f" - Rate limit exceeded. Waiting for 60 seconds before retrying... (Attempt {attempt + 1}/{MAX_RETRIES})")
+                time.sleep(60)
+                continue
+
+            if response.status_code >= 500:
+                print(f" - Server error ({response.status_code}). Waiting {RETRY_DELAY}s before retrying... (Attempt {attempt + 1}/{MAX_RETRIES})")
+                time.sleep(RETRY_DELAY)
+                continue
+
+            response.raise_for_status()  # Raise an exception for other 4xx codes
             
             content = response.json()['choices'][0]['message']['content']
             return json.loads(content)
 
-        except (requests.RequestException, json.JSONDecodeError, KeyError) as e:
-            print(f" - API Error: {e}. Retrying in {RETRY_DELAY}s... (Attempt {attempt + 1}/{MAX_RETRIES})")
+        except requests.exceptions.RequestException as e:
+            print(f" - Network error: {e}. Retrying in {RETRY_DELAY}s... (Attempt {attempt + 1}/{MAX_RETRIES})")
+            time.sleep(RETRY_DELAY)
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f" - Error decoding JSON or parsing response: {e}. Retrying...")
             time.sleep(RETRY_DELAY)
     
     print(" - Failed to get a valid response from the API after multiple retries.")
