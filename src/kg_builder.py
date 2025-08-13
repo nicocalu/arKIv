@@ -6,7 +6,7 @@ from tqdm import tqdm
 import time
 
 # Import configuration from config.py
-from config import LLM_API_KEY, LLM_API_ENDPOINT, EXTRACTION_PROMPT_TEMPLATE
+from src.config import LLM_API_KEY, LLM_API_ENDPOINT, EXTRACTION_PROMPT_TEMPLATE
 
 # --- Configuration ---
 METADATA_DIR = "metadata"

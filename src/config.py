@@ -1,7 +1,24 @@
-# --- LLM Configuration ---
-# IMPORTANT: Replace with your actual API key and endpoint.
-# This is a placeholder and will not work without your credentials.
-LLM_API_KEY = ""
+import os
+
+def load_api_key():
+    """Loads the API key from a file named 'api.key' in the root directory."""
+    try:
+        with open("api.key", "r") as f:
+            key = f.read().strip()
+            if not key:
+                raise ValueError("API key file is empty.")
+            return key
+    except FileNotFoundError:
+        print("ERROR: API key file 'api.key' not found.")
+        print("Please create this file in the root directory and paste your API key into it.")
+        return None
+    except Exception as e:
+        print(f"An error occurred while reading the API key: {e}")
+        return None
+
+# The API key is now loaded securely from the 'api.key' file.
+LLM_API_KEY = load_api_key()
+
 
 # Example for a known provider (e.g., OpenAI-compatible):
 LLM_API_ENDPOINT = "https://api.openai.com/v1/chat/completions"
