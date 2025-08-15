@@ -109,14 +109,32 @@ class QASystem:
     def search_knowledge_graph(self, question):
         print("Performing knowledge graph search...")
         # A more advanced version would translate the question to a Cypher query.
-        # For now, we'll extract entities and find their connections.
-        extraction_prompt = f"From the following question, extract the key entities (like author names, paper titles, methodologies, or topics). Return them as a JSON list. Question: {question}"
+        # For now, we'll extract specific named entities and find their connections.
+        extraction_prompt = f"""
+Your task is to extract key named entities from the user's question.
+Focus on specific names of methodologies, topics, or people. Do not extract generic terms like 'authors' or 'papers'.
+Return the results as a single, valid JSON list of strings.
+
+Example:
+Question: "Which authors have published papers on GARCH models?"
+Result: ["GARCH models"]
+
+Question: "{question}"
+Result:
+"""
         
         entities_str = self._call_llm(extraction_prompt)
         try:
+            # Clean up potential markdown formatting from the LLM response
+            if "```" in entities_str:
+                entities_str = entities_str.split('```')[1].replace('json\n', '').strip()
             entities = json.loads(entities_str)
-        except:
-            print(" - Could not parse entities from LLM response.")
+            if not isinstance(entities, list):
+                raise json.JSONDecodeError("LLM did not return a list", entities_str, 0)
+
+        except (json.JSONDecodeError, IndexError) as e:
+            print(f" - Could not parse entities list from LLM response: {e}")
+            print(f" - Raw response received: {entities_str}")
             return "Could not identify specific entities in the question for graph search."
 
         if not entities:
@@ -125,6 +143,8 @@ class QASystem:
         print(f" - Found entities: {entities}")
         context = []
         for entity in entities:
+            if not isinstance(entity, str):
+                continue # Skip if an item in the list is not a string
             # Find nodes that match the entity
             matching_nodes = [n for n, d in self.graph.nodes(data=True) if entity.lower() in d.get('label', '').lower()]
             for node in matching_nodes:
