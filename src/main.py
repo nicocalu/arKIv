@@ -28,7 +28,7 @@ def main():
       max_results=1000,
       sort_by=arxiv.SortCriterion.SubmittedDate
     )
-    client = arxiv.Client(page_size=99)
+    client = arxiv.Client(page_size=1000)
 
     print(f"Searching for up to {MAX_RESULTS} recent papers in categories: {', '.join(CATEGORIES)}")
 
