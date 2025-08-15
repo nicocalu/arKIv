@@ -6,4 +6,3 @@ faiss-cpu
 networkx
 requests
 tqdm
-openai
