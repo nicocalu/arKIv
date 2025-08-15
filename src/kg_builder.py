@@ -1,13 +1,14 @@
 import os
 import json
 import requests
+import time
 import networkx as nx
 from tqdm import tqdm
-import time
+import re  # Import the regular expression module
 
 # Import configuration from config.py
 # NOTE: We will ignore the API key from config and use a local endpoint instead.
-from src.config import EXTRACTION_PROMPT_TEMPLATE
+from config import EXTRACTION_PROMPT_TEMPLATE
 
 # --- Configuration ---
 METADATA_DIR = "metadata"
@@ -15,9 +16,18 @@ GRAPH_OUTPUT_PATH = "knowledge_graph.gexf"
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # seconds
 
-# --- NEW: Local LLM Configuration ---
+# --- Local LLM Configuration ---
 LOCAL_LLM_ENDPOINT = "http://localhost:11434/api/chat" # Default for Ollama
 LOCAL_MODEL_NAME = "llama3.1:8b" # The model you have installed
+
+def sanitize_for_xml(text):
+    """Removes characters that are invalid in XML 1.0."""
+    if not isinstance(text, str):
+        return text
+    # Use a regex to remove illegal control characters.
+    # XML 1.0 spec allows #x9, #xA, #xD, and chars in [#x20-#xD7FF] etc.
+    # This regex removes most common invalid characters.
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
 
 def call_llm_api(abstract, existing_topics):
     """
@@ -64,72 +74,65 @@ def call_llm_api(abstract, existing_topics):
 
 def main():
     """
-    Main function to build the knowledge graph from paper metadata.
+    Reads metadata, calls the LLM to extract entities, and builds a knowledge graph.
     """
     if not os.path.exists(METADATA_DIR):
-        print(f"Directory '{METADATA_DIR}' not found. Please run main.py to download papers and metadata first.")
+        print(f"Error: Metadata directory '{METADATA_DIR}' not found.")
         return
 
     G = nx.Graph()
-    metadata_files = [f for f in os.listdir(METADATA_DIR) if f.endswith('.json')]
-
-    if not metadata_files:
-        print(f"No metadata files found in '{METADATA_DIR}'.")
-        return
-
-    print(f"Found {len(metadata_files)} metadata files. Starting knowledge graph construction...")
-
-    # Set to keep track of topics already in the graph
     existing_topics = set()
 
-    for filename in tqdm(metadata_files, desc="Processing papers"):
+    files_to_process = [f for f in os.listdir(METADATA_DIR) if f.endswith('.json')]
+    
+    for filename in tqdm(files_to_process, desc="Building Knowledge Graph"):
         filepath = os.path.join(METADATA_DIR, filename)
         with open(filepath, 'r', encoding='utf-8') as f:
-            metadata = json.load(f)
+            paper_data = json.load(f)
 
-        paper_id = metadata['paper_id']
-        title = metadata['title']
-        authors = metadata['authors']
-        abstract = metadata['abstract']
+        paper_id = paper_data.get("id", "Unknown")
+        # Sanitize all text data before adding it to the graph
+        paper_title = sanitize_for_xml(paper_data.get("title", "Unknown Title"))
+        authors = paper_data.get("authors", [])
+        abstract = paper_data.get("abstract", "")
+
+        if not abstract:
+            continue
 
         # Add paper node
-        G.add_node(paper_id, label=title, type='paper', title=title)
-
-        # Add author nodes and connect them to the paper
-        for author in authors:
-            G.add_node(author, label=author, type='author')
-            G.add_edge(paper_id, author, label='authored_by')
-
-        # Extract entities from abstract using LLM
-        print(f"\nProcessing: {title}")
-        # Pass the current list of topics to the API call
-        extracted_data = call_llm_api(abstract, list(existing_topics))
-
+        G.add_node(paper_id, label=paper_title, type="paper")
+        
+        # Add author nodes and edges
+        for author_name in authors:
+            sanitized_author = sanitize_for_xml(author_name)
+            if sanitized_author not in G:
+                G.add_node(sanitized_author, label=sanitized_author, type="author")
+            G.add_edge(paper_id, sanitized_author)
+        
+        # Extract and add methodology and topic nodes
+        extracted_data = call_llm_api(abstract, existing_topics)
+        
         if extracted_data:
-            # Add methodology nodes and connect them
-            for methodology in extracted_data.get('methodologies', []):
-                G.add_node(methodology, label=methodology, type='methodology')
-                G.add_edge(paper_id, methodology, label='uses_methodology')
+            for methodology in extracted_data.get("methodologies", []):
+                sanitized_methodology = sanitize_for_xml(methodology)
+                if sanitized_methodology not in G:
+                    G.add_node(sanitized_methodology, label=sanitized_methodology, type="methodology")
+                G.add_edge(paper_id, sanitized_methodology)
 
-            # Add topic nodes and connect them
-            for topic in extracted_data.get('topics', []):
-                # Add to the graph
-                G.add_node(topic, label=topic, type='topic')
-                G.add_edge(paper_id, topic, label='has_topic')
-                # Add to our set of existing topics for the next API call
-                existing_topics.add(topic)
-        else:
-            print(f" - Skipping entity extraction for '{title}' due to API failure.")
-
-
+            for topic in extracted_data.get("topics", []):
+                sanitized_topic = sanitize_for_xml(topic)
+                if sanitized_topic not in G:
+                    G.add_node(sanitized_topic, label=sanitized_topic, type="topic")
+                existing_topics.add(sanitized_topic)
+                G.add_edge(paper_id, sanitized_topic)
+    
     print(f"\nKnowledge graph construction complete.")
-    print(f" - Nodes: {G.number_of_nodes()}")
-    print(f" - Edges: {G.number_of_edges()}")
+    print(f" - Total nodes: {G.number_of_nodes()}")
+    print(f" - Total edges: {G.number_of_edges()}")
 
     # Save the graph
     nx.write_gexf(G, GRAPH_OUTPUT_PATH)
-    print(f"\nGraph saved to {GRAPH_OUTPUT_PATH}")
-    print("You can open this file with a graph visualization tool like Gephi.")
+    print(f"Graph saved to {GRAPH_OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
