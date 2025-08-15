@@ -25,7 +25,7 @@ def main():
     # Search for the most recent articles matching the query, using our custom client.
     search = arxiv.Search(
       query=query,
-      max_results=100,
+      max_results=1000,
       sort_by=arxiv.SortCriterion.SubmittedDate
     )
     client = arxiv.Client(page_size=99)
