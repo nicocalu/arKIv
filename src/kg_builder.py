@@ -6,7 +6,8 @@ from tqdm import tqdm
 import time
 
 # Import configuration from config.py
-from src.config import LLM_API_KEY, LLM_API_ENDPOINT, EXTRACTION_PROMPT_TEMPLATE
+# NOTE: We will ignore the API key from config and use a local endpoint instead.
+from src.config import EXTRACTION_PROMPT_TEMPLATE
 
 # --- Configuration ---
 METADATA_DIR = "metadata"
@@ -14,63 +15,50 @@ GRAPH_OUTPUT_PATH = "knowledge_graph.gexf"
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # seconds
 
+# --- NEW: Local LLM Configuration ---
+LOCAL_LLM_ENDPOINT = "http://localhost:11434/api/chat" # Default for Ollama
+LOCAL_MODEL_NAME = "llama3.1:8b" # The model you have installed
+
 def call_llm_api(abstract, existing_topics):
     """
-    Calls the configured LLM API to extract entities from the abstract.
-    Includes retry logic for handling transient API errors.
+    Calls a LOCAL LLM API (like Ollama) to extract entities from the abstract.
     """
-    if LLM_API_KEY == "" :
-        raise ValueError("Please update LLM_API_KEY in config.py")
-
-    headers = {
-        "Authorization": f"Bearer {LLM_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    # Format the list of existing topics for the prompt
-    topics_str = ", ".join(existing_topics) if existing_topics else "None"
+    topics_str = ", ".join(f'"{t}"' for t in sorted(list(existing_topics))) if existing_topics else "None"
     
     prompt = EXTRACTION_PROMPT_TEMPLATE.format(
         abstract=abstract,
         existing_topics=topics_str
     )
 
+    # The payload structure for Ollama is slightly different
     payload = {
-        "model": "o3-mini", 
+        "model": LOCAL_MODEL_NAME, 
         "messages": [
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.0,
-        "response_format": {"type": "json_object"}
+        "format": "json", # Ollama's way of ensuring JSON output
+        "stream": False   # We want the full response at once
     }
 
     for attempt in range(MAX_RETRIES):
         try:
-            response = requests.post(LLM_API_ENDPOINT, headers=headers, json=payload, timeout=60)
-
-            if response.status_code == 429:
-                print(f" - Rate limit exceeded. Waiting for 60 seconds before retrying... (Attempt {attempt + 1}/{MAX_RETRIES})")
-                time.sleep(60)
-                continue
-
-            if response.status_code >= 500:
-                print(f" - Server error ({response.status_code}). Waiting {RETRY_DELAY}s before retrying... (Attempt {attempt + 1}/{MAX_RETRIES})")
-                time.sleep(RETRY_DELAY)
-                continue
-
-            response.raise_for_status()  # Raise an exception for other 4xx codes
+            # Note: No headers needed for a local, unsecured endpoint
+            response = requests.post(LOCAL_LLM_ENDPOINT, json=payload, timeout=120) # Increased timeout for local model
+            response.raise_for_status()
             
-            content = response.json()['choices'][0]['message']['content']
+            # Ollama nests the JSON content differently
+            response_data = response.json()
+            content = response_data['message']['content']
             return json.loads(content)
 
         except requests.exceptions.RequestException as e:
-            print(f" - Network error: {e}. Retrying in {RETRY_DELAY}s... (Attempt {attempt + 1}/{MAX_RETRIES})")
+            print(f" - Local server error: {e}. Is Ollama running? Retrying in {RETRY_DELAY}s...")
             time.sleep(RETRY_DELAY)
         except (json.JSONDecodeError, KeyError) as e:
-            print(f" - Error decoding JSON or parsing response: {e}. Retrying...")
+            print(f" - Error decoding JSON or parsing response from local model: {e}. Retrying...")
             time.sleep(RETRY_DELAY)
     
-    print(" - Failed to get a valid response from the API after multiple retries.")
+    print(" - Failed to get a valid response from the local model after multiple retries.")
     return None
 
 

@@ -12,14 +12,25 @@ echo
 
 # --- Pre-run Checks ---
 
-# Check for API key file
+# 1. Check for Ollama Server
+echo "Checking for local Ollama server..."
+if ! curl -s -f http://localhost:11434/ > /dev/null; then
+    echo "[ERROR] Local Ollama server is not running or not reachable at http://localhost:11434/"
+    echo "Please start Ollama and ensure it's accessible, then run this script again."
+    exit 1
+fi
+echo "Ollama server found."
+echo
+
+# 2. Check for API key file (for the final QA system)
 if [ ! -f "api.key" ]; then
     echo "[ERROR] API key file 'api.key' not found."
-    echo "Please create this file, place your OpenAI API key inside it, and run again."
+    echo "This key is still required for the final QA system step (qa_system.py)."
+    echo "Please create this file, place your OpenAI-compatible API key inside it, and run again."
     exit 1
 fi
 
-# Check for virtual environment (recommended)
+# 3. Check for virtual environment (recommended)
 if [ -z "$VIRTUAL_ENV" ]; then
     echo "[WARNING] You are not running inside a Python virtual environment."
     echo "It is highly recommended to use one to manage dependencies."
@@ -40,11 +51,11 @@ echo "[Step 2/4] Running data_extractor.py to create embeddings..."
 python3 src/data_extractor.py
 
 echo
-echo "[Step 3/4] Running kg_builder.py to build the knowledge graph..."
+echo "[Step 3/4] Running kg_builder.py to build the knowledge graph (using local Ollama)..."
 python3 src/kg_builder.py
 
 echo
-echo "[Step 4/4] Running qa_system.py to start the question-answering interface..."
+echo "[Step 4/4] Running qa_system.py to start the question-answering interface (using API key)..."
 python3 src/qa_system.py
 
 echo
