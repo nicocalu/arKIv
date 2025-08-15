@@ -22,18 +22,13 @@ def main():
     # Construct the search query
     query = " OR ".join([f"cat:{cat}" for cat in CATEGORIES])
 
-    custom_client = arxiv.Client(
-        page_size=99,
-        num_retries=5
-    )
-
     # Search for the most recent articles matching the query, using our custom client.
     search = arxiv.Search(
       query=query,
-      max_results=MAX_RESULTS,
-      sort_by=arxiv.SortCriterion.SubmittedDate,
-      client=custom_client
+      max_results=100,
+      sort_by=arxiv.SortCriterion.SubmittedDate
     )
+    client = arxiv.Client(page_size=99)
 
     print(f"Searching for up to {MAX_RESULTS} recent papers in categories: {', '.join(CATEGORIES)}")
 
@@ -41,7 +36,8 @@ def main():
     try:
         # Iterate directly over the search results. This handles pagination more simply.
         # The tqdm wrapper provides a progress bar.
-        results_iterator = search.results()
+        results_iterator = client.results(search)
+
         for paper in tqdm(results_iterator, total=MAX_RESULTS, desc="Processing papers"):
             paper_id = paper.get_short_id()
             pdf_filename = f"{paper_id}.pdf"
