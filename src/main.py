@@ -4,7 +4,7 @@ import json
 
 # --- Configuration ---
 CATEGORIES = ['q-fin', 'stat.ML', 'cs.LG', 'econ.EM']
-MAX_RESULTS = 20  # for testing
+MAX_RESULTS = 1000  # for testing
 DOWNLOAD_DIR = "papers"
 METADATA_DIR = "metadata"
 
