@@ -3,11 +3,16 @@ import json
 import faiss
 import networkx as nx
 import numpy as np
-import requests
+import openai
 from sentence_transformers import SentenceTransformer
 
 # Import configuration from config.py
 from config import LLM_API_KEY, LLM_API_ENDPOINT
+
+client = openai.OpenAI(
+    api_key=LLM_API_KEY,
+    base_url=LLM_API_ENDPOINT.rsplit('/', 1)[0] # e.g., "https://api.openai.com/v1"
+)
 
 # --- Configuration ---
 VECTOR_STORE_PATH = "vector_store.index"
@@ -63,21 +68,23 @@ class QASystem:
         print("QA System ready.\n")
 
     def _call_llm(self, prompt, model="o3-mini"):
-        headers = {
-            "Authorization": f"Bearer {LLM_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1
-        }
+        if not LLM_API_KEY:
+            print("LLM_API_KEY not found. Please check your api.key file.")
+            return None
+
         try:
-            response = requests.post(LLM_API_ENDPOINT, headers=headers, json=payload)
-            response.raise_for_status()
-            return response.json()['choices'][0]['message']['content']
-        except Exception as e:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            return response.choices[0].message.content
+        except openai.APIStatusError as e:
             print(f"Error calling LLM API: {e}")
+            return None
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
             return None
 
     def route_query(self, question):
@@ -97,7 +104,7 @@ class QASystem:
             if i != -1: # FAISS returns -1 for no result
                 chunk_info = self.text_metadata.get(str(i))
                 if chunk_info:
-                    results.append(f"From paper {chunk_info['paper_id']}:\n...{chunk_info['chunk']}...")
+                    results.append(f"From paper {chunk_info['paper_id']}:\n...{chunk_info['chunk_id']}...")
         return "\n\n".join(results)
 
     def search_knowledge_graph(self, question):
