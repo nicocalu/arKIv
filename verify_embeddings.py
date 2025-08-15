@@ -59,7 +59,7 @@ def verify_vector_search():
         chunk_info = text_metadata.get(str(idx))
         if chunk_info:
             print(f"--- Result {i+1} (Paper: {chunk_info['paper_id']}, Distance: {distances[0][i]:.4f}) ---")
-            print(f"...{chunk_info['chunk']}...")
+            print(f"...{chunk_info['chunk_id']}...")
             print("-" * 20 + "\n")
         else:
             print(f"[WARNING] Index {idx} found in FAISS but not in metadata file.")
