@@ -10,8 +10,7 @@ from sentence_transformers import SentenceTransformer
 from config import LLM_API_KEY, LLM_API_ENDPOINT
 
 client = openai.OpenAI(
-    api_key=LLM_API_KEY,
-    base_url=LLM_API_ENDPOINT.rsplit('/', 1)[0] # e.g., "https://api.openai.com/v1"
+    api_key=LLM_API_KEY
 )
 
 # --- Configuration ---
