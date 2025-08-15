@@ -12,10 +12,13 @@ echo 'Environment="OLLAMA_MODELS=/tmp"' >> /etc/systemd/system/ollama.service.d/
 
 module load python
 git clone https://github.com/nicocalu/arKIv
-cd arKiv
-python -m venv venv
-source venv/bin/activate
+cd arKIv
+chmod +x run.sh
+#python -m venv venv
+#source venv/bin/activate
 
 pip install -r requirements.txt
 
-echo "### TRANSFER API KEY ###"
+echo "### REBOOT AND TRANSFER API KEY ###"
+echo "#   python -m venv venv           #"
+echo "#   source venv/bin/activate      #"

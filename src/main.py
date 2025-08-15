@@ -1,10 +1,11 @@
 import arxiv
 import os
 import json
+from tqdm import tqdm
 
 # --- Configuration ---
 CATEGORIES = ['q-fin', 'stat.ML', 'cs.LG', 'econ.EM']
-MAX_RESULTS = 1000  # for testing
+MAX_RESULTS = 1000  # Set to your desired total
 DOWNLOAD_DIR = "papers"
 METADATA_DIR = "metadata"
 
@@ -21,47 +22,43 @@ def main():
     # Construct the search query
     query = " OR ".join([f"cat:{cat}" for cat in CATEGORIES])
 
-    # Construct the default API client.
-    client = arxiv.Client()
-
-    # Search for the most recent articles matching the query
+    # Search for the most recent articles matching the query.
+    # We will iterate directly on search.results() which is more robust for large queries.
     search = arxiv.Search(
       query=query,
       max_results=MAX_RESULTS,
       sort_by=arxiv.SortCriterion.SubmittedDate
     )
 
-    print(f"Searching for the {MAX_RESULTS} most recent papers in categories: {', '.join(CATEGORIES)}")
+    print(f"Searching for up to {MAX_RESULTS} recent papers in categories: {', '.join(CATEGORIES)}")
 
-    results = client.results(search)
+    # Using a try/except block for the iterator is a good practice for API calls
+    try:
+        # Iterate directly over the search results. This handles pagination more simply.
+        # The tqdm wrapper provides a progress bar.
+        results_iterator = search.results()
+        for paper in tqdm(results_iterator, total=MAX_RESULTS, desc="Processing papers"):
+            paper_id = paper.get_short_id()
+            pdf_filename = f"{paper_id}.pdf"
+            metadata_filename = f"{paper_id}.json"
+            
+            pdf_filepath = os.path.join(DOWNLOAD_DIR, pdf_filename)
+            metadata_filepath = os.path.join(METADATA_DIR, metadata_filename)
 
-    # Download papers and save metadata
-    for paper in results:
-        paper_id = paper.get_short_id()
-        pdf_filename = f"{paper_id}.pdf"
-        metadata_filename = f"{paper_id}.json"
-        
-        pdf_filepath = os.path.join(DOWNLOAD_DIR, pdf_filename)
-        metadata_filepath = os.path.join(METADATA_DIR, metadata_filename)
-
-        # --- Download PDF ---
-        try:
-            if os.path.exists(pdf_filepath):
-                print(f"Skipping PDF for '{paper.title}', already downloaded.")
-            else:
-                print(f"Downloading PDF for '{paper.title}'...")
-                paper.download_pdf(dirpath=DOWNLOAD_DIR, filename=pdf_filename)
-                print(f" -> Saved to {pdf_filepath}")
-        except Exception as e:
-            print(f"Error downloading PDF for '{paper.title}': {e}")
-            continue # Skip metadata if PDF fails
-
-        # --- Save Metadata ---
-        try:
+            # Check if metadata exists, if so, we assume the PDF is also handled.
             if os.path.exists(metadata_filepath):
-                 print(f"Skipping metadata for '{paper.title}', already exists.")
-            else:
-                print(f"Saving metadata for '{paper.title}'...")
+                continue
+
+            # --- Download PDF ---
+            try:
+                paper.download_pdf(dirpath=DOWNLOAD_DIR, filename=pdf_filename)
+            except Exception as e:
+                # Using tqdm.write is better for printing inside a loop
+                tqdm.write(f"Error downloading PDF for '{paper.title}': {e}")
+                continue # Skip metadata if PDF fails
+
+            # --- Save Metadata ---
+            try:
                 metadata = {
                     "paper_id": paper_id,
                     "title": paper.title,
@@ -72,13 +69,18 @@ def main():
                 }
                 with open(metadata_filepath, 'w', encoding='utf-8') as f:
                     json.dump(metadata, f, indent=4)
-                print(f" -> Saved to {metadata_filepath}")
 
-        except Exception as e:
-            print(f"Error saving metadata for '{paper.title}': {e}")
+            except Exception as e:
+                tqdm.write(f"Error saving metadata for '{paper.title}': {e}")
 
+    except arxiv.UnexpectedEmptyPageError as e:
+        # This error is less likely now, but we keep the handler as a safeguard.
+        tqdm.write(f"\n[WARNING] Hit an empty page from arXiv API: {e}. This can happen with very large result sets.")
+        tqdm.write("Processing will continue with the papers downloaded so far.")
+    except Exception as e:
+        tqdm.write(f"\n[ERROR] An unexpected error occurred: {e}")
 
-    print("\nScraping complete.")
+    print("\nScraping run complete.")
 
 if __name__ == "__main__":
     main()
