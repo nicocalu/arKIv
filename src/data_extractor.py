@@ -6,16 +6,14 @@ import faiss
 import json
 import re
 from tqdm import tqdm
-import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 # --- Configuration ---
 PAPER_DIR = "papers"
 VECTOR_STORE_PATH = "vector_store.index"
 METADATA_STORE_PATH = "metadata.json"
-MODEL_NAME = 'all-MiniLM-L6-v2'
+MODEL_NAME = 'all-mpnet-base-v2'
 # Set the number of parallel processes. Defaults to number of cores.
 # On Debian, you can find the number of cores with `nproc`.
 # Let's use a few less than max to keep the system responsive.

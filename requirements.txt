@@ -6,3 +6,7 @@ faiss-cpu
 networkx
 requests
 tqdm
+openai
+PyMuPDF
+google-cloud-storage
+sickle
