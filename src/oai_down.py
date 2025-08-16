@@ -4,12 +4,14 @@ import concurrent.futures
 from sickle import Sickle
 import os
 import time
+import json
 
 categories = ['q-fin:q-fin', 'stat:stat:ML', 'cs:cs:LG', 'econ:econ:EM']
 
 # 1. Use OAI-PMH to get metadata with category information
-def get_papers_by_categories(categories, max_papers=30000):
+def get_papers_by_categories(categories, max_papers=30000, metadata_dir="./metadata/"):
     sickle = Sickle('http://export.arxiv.org/oai2')
+    os.makedirs(metadata_dir, exist_ok=True)
     paper_ids = set()  # Use set to avoid duplicates
     
     papers_per_category = max_papers // len(categories)
@@ -26,6 +28,22 @@ def get_papers_by_categories(categories, max_papers=30000):
                     
                 arxiv_id = record.header.identifier.replace('oai:arXiv.org:', '')
                 paper_ids.add(arxiv_id)
+
+                metadata = {
+                    "id": arxiv_id,
+                    "title": record.metadata.get('title', [''])[0],
+                    "authors": record.metadata.get('keyname', []),
+                    "categories": record.metadata.get('categories', []),
+                    "abstract": record.metadata.get('abstract', [''])[0],
+                    "date": record.metadata.get('created', [''])[0],
+                    "update_date": record.header.datestamp,
+                    "doi": record.metadata.get('doi', []),
+                }
+                
+                # Save metadata to file
+                with open(os.path.join(metadata_dir, f"{arxiv_id.split('/')[-1]}.json"), 'w') as f:
+                    json.dump(metadata, f, indent=2)
+                
                 count += 1
                 
         except Exception as e:
@@ -69,7 +87,7 @@ def download_papers(paper_ids, output_dir='papers', workers = 40):
 
 # Main execution
 if __name__ == "__main__":
-    max_papers = 1000
+    max_papers = 5
     
     print(f"Fetching metadata for {max_papers} papers in category '{categories}'...")
     paper_ids = get_papers_by_categories(categories, max_papers)
