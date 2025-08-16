@@ -13,6 +13,7 @@ echo 'Environment="OLLAMA_MODELS=/tmp"' >> /etc/systemd/system/ollama.service.d/
 
 git clone https://github.com/nicocalu/arKIv
 cd arKIv
+
 chmod +x run.sh
 
 module load python
