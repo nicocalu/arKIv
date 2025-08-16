@@ -44,7 +44,7 @@ fi
 
 echo
 echo "[Step 1/4] Running main.py to scrape papers and metadata..."
-python3 src/main.py
+python3 src/oai_down.py
 
 echo
 echo "[Step 2/4] Running data_extractor.py to create embeddings..."
