@@ -5,7 +5,7 @@ from sentence_transformers import SentenceTransformer
 # --- Configuration ---
 VECTOR_STORE_PATH = "vector_store.index"
 TEXT_METADATA_PATH = "metadata.json"
-MODEL_NAME = 'all-MiniLM-L6-v2'
+MODEL_NAME = 'all-mpnet-base-v2'
 
 def verify_vector_search():
     """

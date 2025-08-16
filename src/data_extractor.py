@@ -17,7 +17,7 @@ MODEL_NAME = 'all-mpnet-base-v2'
 # Set the number of parallel processes. Defaults to number of cores.
 # On Debian, you can find the number of cores with `nproc`.
 # Let's use a few less than max to keep the system responsive.
-MAX_WORKERS = 64
+MAX_WORKERS = 40    
 
 def clean_text(text):
     """

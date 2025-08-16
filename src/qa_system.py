@@ -17,7 +17,7 @@ client = openai.OpenAI(
 VECTOR_STORE_PATH = "vector_store.index"
 TEXT_METADATA_PATH = "metadata.json" # From data_extractor.py
 GRAPH_PATH = "knowledge_graph.gexf"
-MODEL_NAME = 'all-MiniLM-L6-v2'
+MODEL_NAME = 'all-mpnet-base-v2'
 
 # --- Prompt Templates ---
 
