@@ -9,7 +9,7 @@ mkdir -p /etc/systemd/system/ollama.service.d
 touch /etc/systemd/system/ollama.service.d/override.conf
 echo '[Service]' > /etc/systemd/system/ollama.service.d/override.conf
 echo 'Environment="OLLAMA_MODELS=/tmp"' >> /etc/systemd/system/ollama.service.d/override.conf
-
+ollama pull deepseek-r1:32b
 
 git clone https://github.com/nicocalu/arKIv
 cd arKIv

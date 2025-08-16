@@ -18,7 +18,7 @@ RETRY_DELAY = 5  # seconds
 
 # --- Local LLM Configuration ---
 LOCAL_LLM_ENDPOINT = "http://localhost:11434/api/chat" # Default for Ollama
-LOCAL_MODEL_NAME = "mixtral:8x7b" # The model you have installed
+LOCAL_MODEL_NAME = "deepseek-r1:32b" # The model you have installed
 
 def sanitize_for_xml(text):
     """Removes characters that are invalid in XML 1.0."""
