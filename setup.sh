@@ -10,12 +10,14 @@ touch /etc/systemd/system/ollama.service.d/override.conf
 echo '[Service]' > /etc/systemd/system/ollama.service.d/override.conf
 echo 'Environment="OLLAMA_MODELS=/tmp"' >> /etc/systemd/system/ollama.service.d/override.conf
 
-module load python
+
 git clone https://github.com/nicocalu/arKIv
 cd arKIv
 chmod +x run.sh
-#python -m venv venv
-#source venv/bin/activate
+
+module load python
+python -m venv venv
+source venv/bin/activate
 
 pip install -r requirements.txt
 

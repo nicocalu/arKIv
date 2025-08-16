@@ -60,7 +60,7 @@ def download_papers(paper_ids, output_dir='papers', workers = 40):
             blob_file_pairs.append((blob, destination_file))
 
     results = transfer_manager.download_many(
-        blob_file_pairs, max_workers=workers, worker_type="thread", raise_exception=True
+        blob_file_pairs, max_workers=workers, worker_type="thread"
     )
             
     print(f"Done.")
