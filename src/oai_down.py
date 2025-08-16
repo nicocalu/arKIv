@@ -87,7 +87,7 @@ def download_papers(paper_ids, output_dir='papers', workers = 40):
 
 # Main execution
 if __name__ == "__main__":
-    max_papers = 10000
+    max_papers = 7000 # for 6hs runtime
     
     print(f"Fetching metadata for {max_papers} papers in category '{categories}'...")
     paper_ids = get_papers_by_categories(categories, max_papers)
